@@ -24,8 +24,9 @@ def generate_all_plots(df: pd.DataFrame, label: str):
 
 def plot_distributions(df, score_cols, label):
     ensure_dir("plots/distributions")
+    
+    # 1. Combined distribution
     plt.figure(figsize=(15, 8))
-
     for col in score_cols:
         data = df[col].dropna()
         data = data[(100 <= data) & (data <= 200)]
@@ -33,7 +34,6 @@ def plot_distributions(df, score_cols, label):
             plt.hist(data, bins=50, range=(100, 200), alpha=0.4, label=col)
 
     plt.legend(bbox_to_anchor=(1.05, 1))
-
     save_plot(
         f"plots/distributions/dist_{label}.png",
         f"Score distributions — {label}",
@@ -41,6 +41,22 @@ def plot_distributions(df, score_cols, label):
         "Frequency",
         grid_alpha=0.2
     )
+    
+    # 2. Individual subject distributions
+    subj_base_path = f"plots/distributions/{label}"
+    ensure_dir(subj_base_path)
+    for col in score_cols:
+        data = df[col].dropna()
+        data = data[(100 <= data) & (data <= 200)]
+        if not data.empty:
+            plt.figure(figsize=(10, 6))
+            plt.hist(data, bins=50, range=(100, 200), color='skyblue', edgecolor='black', alpha=0.8)
+            save_plot(
+                f"{subj_base_path}/{sanitize_filename(col)}.png",
+                f"Distribution of {col} — {label}",
+                "Score",
+                "Frequency"
+            )
 
 
 def plot_gender_boxplots(df, score_cols, label):
@@ -125,12 +141,10 @@ def plot_subject_progression(summary, forecast_years=2):
 
         line, = plt.plot(series.index, y, marker="o", label=subject)
 
-        forecast_x = future.reshape(-1, 1)
-        forecast_y = model.predict(forecast_x)
-
+        # Plot forecast line connected to the last historical point
         plt.plot(
-            future,
-            forecast_y,
+            all_years.flatten()[len(series)-1:],
+            y_all.flatten()[len(series)-1:],
             linestyle=":",
             alpha=0.6,
             color=line.get_color()
@@ -156,12 +170,12 @@ def plot_all_regions_progression(data, forecast_years=2):
     plt.figure(figsize=(15, 10))
 
     # regional lines
-    for _, group in df.groupby("Region"):
+    for region, group in df.groupby("Region"):
         group = group.sort_values("Year")
         if len(group) < 2:
             continue
 
-        plt.plot(group["Year"], group["Avg_Score"], marker="o", alpha=0.25)
+        plt.plot(group["Year"], group["Avg_Score"], marker="o", alpha=0.25, label=region)
 
     # global trend
     yearly_avg = df.groupby("Year")["Avg_Score"].mean()
@@ -172,6 +186,7 @@ def plot_all_regions_progression(data, forecast_years=2):
 
         model, y_all = fit_and_predict(x, y, all_years)
 
+        # Plot historical trend
         plt.plot(
             years,
             y_all[:len(years)],
@@ -179,9 +194,11 @@ def plot_all_regions_progression(data, forecast_years=2):
             label=f"Global trend (slope={model.coef_[0]:.2f})"
         )
 
+        # Connect and plot forecast trend (starting from the last historical point)
+        # Using [len(years)-1:] to include the last historical point
         plt.plot(
-            future,
-            y_all[-len(future):],
+            all_years.flatten()[len(years)-1:],
+            y_all.flatten()[len(years)-1:],
             linestyle="--",
             linewidth=3,
             label=f"{forecast_years}-year forecast"
