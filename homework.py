@@ -215,7 +215,7 @@ def plot_gender_bias(df, label="overall"):
     )
 
 
-def plot_top_schools_trend(df, subjects=None, group_name="Overall", top_n=10, min_students=20):
+def plot_top_schools_trend(df, subjects=None, group_name="Overall", top_n=20, min_students=20):
     ensure_dir("plots/homework/progression")
 
     if subjects is None:
@@ -245,9 +245,16 @@ def plot_top_schools_trend(df, subjects=None, group_name="Overall", top_n=10, mi
 
     pivot = stats.pivot(index="Year", columns=SCHOOL_COL, values="avg_score")
 
-    # don't drop schools that don't have full timeline
+    # --- drop schools with missing years (port from investigation)
+    pivot = pivot.dropna(axis=1)
+
+    if pivot.empty:
+        print(f"No schools with consistent yearly data for {group_name}.")
+        return
+
+    # --- select top schools by overall mean
     top_schools = (
-        pivot.mean(skipna=True)
+        pivot.mean()
         .sort_values(ascending=False)
         .head(top_n)
         .index
@@ -255,7 +262,7 @@ def plot_top_schools_trend(df, subjects=None, group_name="Overall", top_n=10, mi
 
     pivot = pivot[top_schools]
 
-    plt.figure(figsize=(14, 8))
+    plt.figure(figsize=(16, 10))
 
     for school in pivot.columns:
         plt.plot(pivot.index, pivot[school], marker='o', label=school)

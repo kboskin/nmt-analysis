@@ -69,31 +69,6 @@ def analyze_urban_vs_rural(df):
         print(f"Gap: {city - village:.2f}")
 
 
-def analyze_gender_subject_patterns(df):
-    print("\n--- Gender & Subject Preferences ---")
-
-    gender_col = 'Стать'
-    score_cols = get_score_columns(df)
-
-    gender_totals = df[gender_col].value_counts()
-    rows = []
-
-    for subject in score_cols:
-        participants = df[df[subject].notna()]
-        counts = participants[gender_col].value_counts()
-
-        male_ratio = counts.get('чоловіча', 0) / gender_totals.get('чоловіча', 1)
-        female_ratio = counts.get('жіноча', 0) / gender_totals.get('жіноча', 1)
-
-        rows.append({
-            'subject': subject,
-            'male_%': round(male_ratio * 100, 1),
-            'female_%': round(female_ratio * 100, 1),
-            'male_bias': round(male_ratio / female_ratio, 2) if female_ratio else np.inf,
-        })
-
-    result = pd.DataFrame(rows).sort_values('male_bias', ascending=False)
-    print(result)
 
 
 def analyze_subject_difficulty(df):
@@ -225,35 +200,26 @@ def plot_top_schools(df):
     )
 
 
-def plot_gender_participation(df):
-    ensure_dir("plots/investigation/gender")
+def plot_subject_distributions(df, label="overall"):
+    ensure_dir(f"plots/investigation/distributions/{label}")
 
-    gender_col = "Стать"
     score_cols = get_score_columns(df)
 
-    rows = []
-
     for subject in score_cols:
-        participants = df[df[subject].notna()]
-        counts = participants[gender_col].value_counts()
+        scores = df[subject].dropna()
+        if len(scores) < 10:
+            continue
 
-        rows.append({
-            "subject": subject,
-            "male": counts.get("чоловіча", 0),
-            "female": counts.get("жіноча", 0),
-        })
+        plt.figure(figsize=(10, 6))
+        plt.hist(scores, bins=20, range=(100, 200), edgecolor='black', alpha=0.7)
+        plt.xlim(100, 200)
 
-    data = pd.DataFrame(rows).set_index("subject")
-
-    plt.figure()
-    data.plot(kind="bar")
-
-    save_plot(
-        "plots/investigation/gender/participation.png",
-        "Gender Participation by Subject",
-        "Subject",
-        "Students"
-    )
+        save_plot(
+            f"plots/investigation/distributions/{label}/{subject}.png",
+            f"{subject} Score Distribution ({label})",
+            "Score",
+            "Number of Students"
+        )
 
 
 def plot_top_schools_trend(df, top_n=10, min_students=20):
@@ -335,20 +301,21 @@ if __name__ == "__main__":
 
     analyze_best_schools(full_df)
     analyze_urban_vs_rural(full_df)
-    analyze_gender_subject_patterns(full_df)
     analyze_subject_difficulty(full_df)
 
     run_yearly_analysis(full_df, analyze_best_schools, "Top Schools")
     run_yearly_analysis(full_df, analyze_urban_vs_rural, "Urban vs Rural")
-    run_yearly_analysis(full_df, analyze_gender_subject_patterns, "Gender Patterns")
     run_yearly_analysis(full_df, analyze_subject_difficulty, "Subject Difficulty")
 
     print("\nGenerating plots...")
+
+    plot_subject_distributions(full_df, label="overall")
+    for year, group in full_df.groupby("Year"):
+        plot_subject_distributions(group, label=str(year))
 
     plot_overall_trend(full_df)
     plot_subject_trends(full_df)
     plot_urban_rural_trend(full_df)
     plot_top_schools_trend(full_df)
-    plot_gender_participation(full_df)
 
     print("Plots saved to /plots")
