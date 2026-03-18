@@ -14,27 +14,38 @@ from utils import (
 
 
 def analyze_best_schools(df, subjects=None, group_name="Overall", min_students=20, top_n=10):
-    print(f"\n--- Top Schools ({group_name}) ---")
+    print(f"\n--- Top Schools Multicriteria Ideal Point ({group_name}) ---")
 
-    df = add_group_score(df, subjects)
-    if df is None:
+    if subjects is None:
+        score_cols = get_score_columns(df)
+    else:
+        score_cols = [c for c in subjects if c in df.columns]
+
+    if not score_cols:
         return
 
-    stats = (
-        df.groupby(SCHOOL_COL)
-        .agg(
-            avg_score=("group_score", "mean"),
-            students=("group_score", "count"),
-        )
-    )
+    df = df.copy()
 
-    top = (
-        stats[stats["students"] >= min_students]
-        .sort_values("avg_score", ascending=False)
-        .head(top_n)
-    )
+    # Aggregate by school to find average scores per dimensional subject dot
+    school_means = df.groupby(SCHOOL_COL)[score_cols].mean()
+    
+    school_counts = df.groupby(SCHOOL_COL)[score_cols].count().sum(axis=1)
+    valid_schools = school_counts[school_counts >= min_students].index
 
-    print(top)
+    school_means = school_means.loc[valid_schools]
+
+    school_means = school_means.fillna()
+    ideal_point = school_means.max()
+
+    distances = np.sqrt(((school_means - ideal_point) ** 2).sum(axis=1))
+    top_schools = distances.sort_values(ascending=True).head(top_n)
+
+    result = pd.DataFrame({
+        "Distance to Ideal": top_schools,
+        "Total Exams": school_counts.loc[top_schools.index]
+    })
+    
+    print(f"Absolute winner is {result}")
 
 
 def analyze_urban_vs_rural(df):
@@ -228,6 +239,7 @@ if __name__ == "__main__":
 
     full_df = pd.concat(frames, ignore_index=True)
 
+    analyze_best_schools(full_df, subjects=None, group_name="All Subjects")
     analyze_best_schools(full_df, subjects=HUM_SUBJECTS, group_name="Humanities")
     analyze_best_schools(full_df, subjects=TECH_SUBJECTS, group_name="Tech")
     analyze_urban_vs_rural(full_df)
