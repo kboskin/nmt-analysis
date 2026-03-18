@@ -1,4 +1,5 @@
 import os
+import re
 
 import numpy as np
 from matplotlib import pyplot as plt
@@ -119,3 +120,13 @@ def save_plot(path, title, xlabel, ylabel, xticks=None, grid_alpha=0.3):
     plt.tight_layout()
     plt.savefig(path)
     plt.close()
+
+
+def get_score_columns(df):
+    subjects = set(SUBJECT_NORMALIZATION.values())
+    return [c for c in df.columns if c in subjects]
+
+
+def extract_year(path: str) -> int:
+    match = re.search(r"\d{4}", os.path.basename(path))
+    return int(match.group()) if match else 0
