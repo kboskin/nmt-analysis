@@ -11,64 +11,8 @@ from utils import (
     get_score_columns,
     extract_year,
     ensure_dir,
-    save_plot,
+    save_plot, run_yearly_analysis,
 )
-
-
-# --- helpers -----------------------------------------------------------------
-
-def run_yearly_analysis(df, func, title):
-    print(f"\n===== {title} (Yearly) =====")
-    for year, group in sorted(df.groupby("Year")):
-        print(f"\n--- {year} ---")
-        func(group)
-
-
-# --- analysis ---------------------------------------------------------------
-
-def analyze_best_schools(df):
-    print("\n--- Top Schools ---")
-
-    school_col = 'Заклад освіти учасника'
-    score_cols = get_score_columns(df)
-
-    df = df.copy()
-    df['student_mean'] = df[score_cols].mean(axis=1)
-
-    stats = (
-        df.groupby(school_col)
-        .agg(avg_score=('student_mean', 'mean'),
-             students=('student_mean', 'size'))
-    )
-
-    top = (
-        stats[stats['students'] >= 20]
-        .sort_values('avg_score', ascending=False)
-        .head(10)
-    )
-
-    print(top)
-
-
-def analyze_urban_vs_rural(df):
-    print("\n--- Urban vs Rural ---")
-
-    territory_col = 'Тип території'
-    score_cols = get_score_columns(df)
-
-    df = df.copy()
-    df['overall_score'] = df[score_cols].mean(axis=1)
-
-    comparison = df.groupby(territory_col)['overall_score'].mean().sort_index()
-    print(comparison)
-
-    city = comparison.get('місто')
-    village = comparison.get('селище, село')
-
-    if city is not None and village is not None:
-        print(f"Gap: {city - village:.2f}")
-
-
 
 
 def analyze_subject_difficulty(df):
@@ -79,8 +23,6 @@ def analyze_subject_difficulty(df):
 
     print(difficulty)
 
-
-# --- visualizations ---------------------------------------------------------
 
 def plot_overall_trend(df):
     ensure_dir("plots/investigation/progression/analysis")
@@ -121,49 +63,6 @@ def plot_subject_trends(df):
             "Year",
             "Score",
             xticks=yearly.index
-        )
-
-
-def plot_urban_rural_trend(df):
-    ensure_dir("plots/investigation/progression")
-
-    score_cols = get_score_columns(df)
-
-    df = df.copy()
-    df["mean_score"] = df[score_cols].mean(axis=1)
-
-    grouped = df.groupby(["Year", "Тип території"])["mean_score"].mean().unstack()
-
-    plt.figure()
-
-    if "місто" in grouped:
-        plt.plot(grouped.index, grouped["місто"], marker='o', label="City")
-
-    if "селище, село" in grouped:
-        plt.plot(grouped.index, grouped["селище, село"], marker='o', label="Village")
-
-    plt.legend()
-
-    save_plot(
-        "plots/investigation/progression/urban_vs_rural.png",
-        "Urban vs Rural Scores Over Time",
-        "Year",
-        "Score",
-        xticks=grouped.index
-    )
-
-    if "місто" in grouped and "селище, село" in grouped:
-        gap = grouped["місто"] - grouped["селище, село"]
-
-        plt.figure()
-        plt.plot(gap.index, gap.values, marker='o')
-
-        save_plot(
-            "plots/investigation/progression/urban_rural_gap.png",
-            "Urban - Rural Gap",
-            "Year",
-            "Score Difference",
-            xticks=gap.index
         )
 
 
@@ -231,7 +130,6 @@ def plot_top_schools_trend(df, top_n=10, min_students=20):
     df = df.copy()
     df["mean_score"] = df[score_cols].mean(axis=1)
 
-    # --- yearly stats per school
     stats = (
         df.groupby(["Year", school_col])
         .agg(
@@ -241,24 +139,20 @@ def plot_top_schools_trend(df, top_n=10, min_students=20):
         .reset_index()
     )
 
-    # --- filter by minimum students per year
+    # filter by minimum students per year
     stats = stats[stats["students"] >= min_students]
-
-    # --- pivot for time series
     pivot = stats.pivot(index="Year", columns=school_col, values="avg_score")
 
-    # --- drop schools with missing years (your requirement)
+    # we are dropping schools for missing years
     pivot = pivot.dropna(axis=1)
 
     if pivot.empty:
         print("No schools with consistent yearly data.")
         return
 
-    # --- select top schools by overall mean
     top_schools = pivot.mean().sort_values(ascending=False).head(top_n).index
     pivot = pivot[top_schools]
 
-    # --- plot
     plt.figure()
 
     for school in pivot.columns:
@@ -299,12 +193,8 @@ if __name__ == "__main__":
 
     print(f"\n===== OVERALL ANALYSIS ({len(full_df)} records) =====")
 
-    analyze_best_schools(full_df)
-    analyze_urban_vs_rural(full_df)
     analyze_subject_difficulty(full_df)
 
-    run_yearly_analysis(full_df, analyze_best_schools, "Top Schools")
-    run_yearly_analysis(full_df, analyze_urban_vs_rural, "Urban vs Rural")
     run_yearly_analysis(full_df, analyze_subject_difficulty, "Subject Difficulty")
 
     print("\nGenerating plots...")
@@ -315,7 +205,6 @@ if __name__ == "__main__":
 
     plot_overall_trend(full_df)
     plot_subject_trends(full_df)
-    plot_urban_rural_trend(full_df)
     plot_top_schools_trend(full_df)
 
     print("Plots saved to /plots")

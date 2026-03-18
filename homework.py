@@ -9,33 +9,9 @@ from utils import (
     get_score_columns,
     extract_year,
     ensure_dir,
-    save_plot,
+    save_plot, SCHOOL_COL, TERRITORY_COL, GENDER_COL, HUM_SUBJECTS, TECH_SUBJECTS, add_mean_score,
 )
 
-# --- helpers -----------------------------------------------------------------
-
-SCHOOL_COL = 'Заклад освіти учасника'
-GENDER_COL = 'Стать'
-TERRITORY_COL = 'Тип території'
-
-HUM_SUBJECTS = ['Українська мова', 'Українська література', 'Історія України', 'Англійська мова', 'Французька мова', 'Німецька мова', 'Іспанська мова']
-TECH_SUBJECTS = ['Математика', 'Фізика', 'Хімія', 'Біологія', 'Географія']
-
-def add_mean_score(df):
-    df = df.copy()
-    score_cols = get_score_columns(df)
-    df["mean_score"] = df[score_cols].mean(axis=1)
-    return df
-
-
-def run_yearly_analysis(df, func, title):
-    print(f"\n===== {title} (Yearly) =====")
-    for year, group in sorted(df.groupby("Year")):
-        print(f"\n--- {year} ---")
-        func(group)
-
-
-# --- analysis ---------------------------------------------------------------
 
 def analyze_best_schools(df, subjects=None, group_name="Overall", min_students=20, top_n=10):
     print(f"\n--- Top Schools ({group_name}) ---")
@@ -175,6 +151,20 @@ def plot_urban_vs_rural(df):
     plt.savefig("plots/homework/progression/urban_vs_rural.png")
     plt.close()
 
+    if "місто" in grouped.columns and "селище, село" in grouped.columns:
+        gap = grouped["місто"] - grouped["селище, село"]
+
+        plt.figure(figsize=(10, 6))
+        plt.plot(gap.index, gap.values, marker='o')
+
+        plt.title("Urban - Rural Performance Gap Over Time")
+        plt.xlabel("Year")
+        plt.ylabel("Score Difference")
+        plt.grid(alpha=0.3)
+        plt.tight_layout()
+        plt.savefig("plots/homework/progression/urban_rural_gap.png")
+        plt.close()
+
 
 def plot_gender_bias(df, label="overall"):
     ensure_dir("plots/homework/gender")
@@ -245,14 +235,14 @@ def plot_top_schools_trend(df, subjects=None, group_name="Overall", top_n=20, mi
 
     pivot = stats.pivot(index="Year", columns=SCHOOL_COL, values="avg_score")
 
-    # --- drop schools with missing years (port from investigation)
+    # drop schools with missing years (port from investigation)
     pivot = pivot.dropna(axis=1)
 
     if pivot.empty:
         print(f"No schools with consistent yearly data for {group_name}.")
         return
 
-    # --- select top schools by overall mean
+    # select top schools by overall mean
     top_schools = (
         pivot.mean()
         .sort_values(ascending=False)
@@ -262,10 +252,9 @@ def plot_top_schools_trend(df, subjects=None, group_name="Overall", top_n=20, mi
 
     pivot = pivot[top_schools]
 
-    plt.figure(figsize=(16, 10))
+    plt.figure(figsize=(18, 10))
 
-    for school in pivot.columns:
-        plt.plot(pivot.index, pivot[school], marker='o', label=school)
+    pivot.plot(ax=plt.gca(), marker='o', colormap='tab20')
 
     plt.legend(
         loc='upper center',

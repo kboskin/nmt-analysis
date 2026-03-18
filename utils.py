@@ -53,6 +53,13 @@ SUBJECT_NORMALIZATION = {
 AGGREGATION = [f"{data_path}/Odata2022File.csv", f"{data_path}/Odata2023File.csv", f"{data_path}/Odata2024File.csv", f"{data_path}/Odata2025File.csv"]
 
 
+SCHOOL_COL = 'Заклад освіти учасника'
+GENDER_COL = 'Стать'
+TERRITORY_COL = 'Тип території'
+
+HUM_SUBJECTS = ['Українська мова', 'Українська література', 'Історія України', 'Англійська мова', 'Французька мова', 'Німецька мова', 'Іспанська мова']
+TECH_SUBJECTS = ['Математика', 'Фізика', 'Хімія', 'Біологія', 'Географія']
+
 LOWER_MAPPING = {
     **{k.lower(): v for k, v in MAPPING.items()},
     **{k.lower(): v for k, v in SUBJECT_NORMALIZATION.items()},
@@ -61,8 +68,6 @@ LOWER_MAPPING = {
 
 def read_prepared(csv_path: str) -> DataFrame:
     df = pd.read_csv(csv_path, sep=';', decimal=',', na_values=['null'], low_memory=False)
-    # Important: Only drop if ALL major subject scores are missing, not ANY.
-    # Otherwise 2023-2025 data becomes empty because no one takes all optional subjects.
     score_cols = [col for col in df.columns if 'Ball100' in col]
     return df.dropna(subset=score_cols, how='all')
 
@@ -102,3 +107,17 @@ def get_score_columns(df):
 def extract_year(path: str) -> int:
     match = re.search(r"\d{4}", os.path.basename(path))
     return int(match.group()) if match else 0
+
+
+def run_yearly_analysis(df, func, title):
+    print(f"\n===== {title} (Yearly) =====")
+    for year, group in sorted(df.groupby("Year")):
+        print(f"\n--- {year} ---")
+        func(group)
+
+
+def add_mean_score(df):
+    df = df.copy()
+    score_cols = get_score_columns(df)
+    df["mean_score"] = df[score_cols].mean(axis=1)
+    return df
