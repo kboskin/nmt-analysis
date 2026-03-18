@@ -18,6 +18,8 @@ SCHOOL_COL = 'Заклад освіти учасника'
 GENDER_COL = 'Стать'
 TERRITORY_COL = 'Тип території'
 
+HUM_SUBJECTS = ['Українська мова', 'Українська література', 'Історія України', 'Англійська мова', 'Французька мова', 'Німецька мова', 'Іспанська мова']
+TECH_SUBJECTS = ['Математика', 'Фізика', 'Хімія', 'Біологія', 'Географія']
 
 def add_mean_score(df):
     df = df.copy()
@@ -35,16 +37,27 @@ def run_yearly_analysis(df, func, title):
 
 # --- analysis ---------------------------------------------------------------
 
-def analyze_best_schools(df, min_students=20, top_n=10):
-    print("\n--- Top Schools ---")
+def analyze_best_schools(df, subjects=None, group_name="Overall", min_students=20, top_n=10):
+    print(f"\n--- Top Schools ({group_name}) ---")
 
-    df = add_mean_score(df)
+    if subjects is None:
+        score_cols = get_score_columns(df)
+    else:
+        score_cols = [c for c in subjects if c in df.columns]
+
+    if not score_cols:
+        return
+
+    df = df.copy()
+    has_score = df[score_cols].notna().any(axis=1)
+    df = df[has_score]
+    df["group_score"] = df[score_cols].mean(axis=1)
 
     stats = (
         df.groupby(SCHOOL_COL)
         .agg(
-            avg_score=("mean_score", "mean"),
-            students=("mean_score", "size"),
+            avg_score=("group_score", "mean"),
+            students=("group_score", "count"),
         )
     )
 
@@ -77,11 +90,15 @@ def analyze_urban_vs_rural(df):
         print(f"Gap: {city - village:.2f}")
 
 
-def plot_gender_subject_patterns(df):
+def plot_gender_subject_patterns(df, label="overall"):
     ensure_dir("plots/homework/gender")
 
     score_cols = get_score_columns(df)
     gender_totals = df[GENDER_COL].value_counts()
+
+    # Exclude mandatory subjects that skew visualization ranges
+    mandatory_subjects = ['Математика', 'Українська мова', 'Історія України']
+    score_cols = [c for c in score_cols if c not in mandatory_subjects]
 
     rows = []
 
@@ -111,8 +128,8 @@ def plot_gender_subject_patterns(df):
     plt.legend()
 
     save_plot(
-        "plots/gender/gender_subject_distribution.png",
-        "Gender Participation by Subject",
+        f"plots/homework/gender/gender_subject_distribution_{label.lower()}.png",
+        f"Gender Participation by Subject ({label})",
         "Subject",
         "Participation %",
     )
@@ -128,7 +145,7 @@ def analyze_subject_difficulty(df):
 
 
 def plot_urban_vs_rural(df):
-    ensure_dir("plots/progression")
+    ensure_dir("plots/homework/progression")
 
     df = add_mean_score(df)
 
@@ -144,25 +161,30 @@ def plot_urban_vs_rural(df):
 
     plt.figure(figsize=(10, 6))
 
-    for col in grouped.columns:
-        plt.plot(grouped.index, grouped[col], marker='o', label=col)
+    if "місто" in grouped.columns:
+        plt.plot(grouped.index, grouped["місто"], marker='o', label="City")
+    if "селище, село" in grouped.columns:
+        plt.plot(grouped.index, grouped["селище, село"], marker='o', label="Village")
 
-    plt.legend()
+    plt.title("City vs Village Performance Over Time")
+    plt.xlabel("Year")
+    plt.ylabel("Mean Score")
+    plt.legend(loc="upper center", bbox_to_anchor=(0.5, -0.2), ncol=2)
+    plt.grid(alpha=0.3)
+    plt.tight_layout()
+    plt.savefig("plots/homework/progression/urban_vs_rural.png")
+    plt.close()
 
-    save_plot(
-        "plots/progression/urban_vs_rural.png",
-        "Urban vs Rural Performance Over Time",
-        "Year",
-        "Score",
-        xticks=grouped.index
-    )
 
-
-def plot_gender_bias(df):
-    ensure_dir("plots/gender")
+def plot_gender_bias(df, label="overall"):
+    ensure_dir("plots/homework/gender")
 
     score_cols = get_score_columns(df)
     gender_totals = df[GENDER_COL].value_counts()
+
+    # Exclude mandatory subjects that skew visualization ranges
+    mandatory_subjects = ['Математика', 'Українська мова', 'Історія України']
+    score_cols = [c for c in score_cols if c not in mandatory_subjects]
 
     rows = []
 
@@ -186,36 +208,46 @@ def plot_gender_bias(df):
     plt.barh(result["subject"], result["bias"])
 
     save_plot(
-        "plots/gender/gender_bias.png",
-        "Gender Bias by Subject (>1 = male skew)",
+        f"plots/homework/gender/gender_bias_{label.lower()}.png",
+        f"Gender Bias by Subject (>1 = male skew) ({label})",
         "Bias",
         "Subject",
     )
 
 
-def plot_top_schools_trend(df, top_n=10, min_students=20):
-    ensure_dir("plots/progression")
+def plot_top_schools_trend(df, subjects=None, group_name="Overall", top_n=10, min_students=20):
+    ensure_dir("plots/homework/progression")
 
-    df = add_mean_score(df)
+    if subjects is None:
+        score_cols = get_score_columns(df)
+    else:
+        score_cols = [c for c in subjects if c in df.columns]
+
+    if not score_cols:
+        return
+
+    df = df.copy()
+    has_score = df[score_cols].notna().any(axis=1)
+    df = df[has_score]
+    df["group_score"] = df[score_cols].mean(axis=1)
 
     stats = (
         df.groupby(["Year", SCHOOL_COL])
         .agg(
-            avg_score=("mean_score", "mean"),
-            students=("mean_score", "size"),
+            avg_score=("group_score", "mean"),
+            students=("group_score", "count"),
         )
         .reset_index()
     )
 
     stats = stats[stats["students"] >= min_students]
+    if stats.empty: return
 
     pivot = stats.pivot(index="Year", columns=SCHOOL_COL, values="avg_score")
 
     # don't drop schools that don't have full timeline
-    pivot = pivot.mean(skipna=True)
-
     top_schools = (
-        pivot.mean()
+        pivot.mean(skipna=True)
         .sort_values(ascending=False)
         .head(top_n)
         .index
@@ -236,15 +268,13 @@ def plot_top_schools_trend(df, top_n=10, min_students=20):
     )
 
     save_plot(
-        "plots/progression/top_schools_trend.png",
-        "Top Schools Performance Over Time",
+        f"plots/homework/progression/top_schools_trend_{group_name.lower()}.png",
+        f"Top Schools Performance Over Time ({group_name})",
         "Year",
         "Score",
         xticks=pivot.index
     )
 
-
-# --- main --------------------------------------------------------------------
 
 if __name__ == "__main__":
     frames = []
@@ -257,20 +287,27 @@ if __name__ == "__main__":
         df["Year"] = year
         frames.append(df)
 
+    if not frames:
+        print("No data found.")
+        exit(1)
+
     full_df = pd.concat(frames, ignore_index=True)
 
-    analyze_best_schools(full_df)
+    analyze_best_schools(full_df, subjects=HUM_SUBJECTS, group_name="Humanities")
+    analyze_best_schools(full_df, subjects=TECH_SUBJECTS, group_name="Tech")
     analyze_urban_vs_rural(full_df)
-    plot_gender_subject_patterns(full_df)
     analyze_subject_difficulty(full_df)
-    plot_gender_bias(full_df)
-
-    run_yearly_analysis(full_df, analyze_best_schools, "Top Schools")
-    run_yearly_analysis(full_df, analyze_urban_vs_rural, "Urban vs Rural")
-    run_yearly_analysis(full_df, plot_gender_subject_patterns, "Gender Patterns")
-    run_yearly_analysis(full_df, analyze_subject_difficulty, "Subject Difficulty")
 
     print("\nGenerating plots...")
-    plot_top_schools_trend(full_df)
+    plot_top_schools_trend(full_df, subjects=HUM_SUBJECTS, group_name="Humanities")
+    plot_top_schools_trend(full_df, subjects=TECH_SUBJECTS, group_name="Tech")
     plot_urban_vs_rural(full_df)
+
+    plot_gender_subject_patterns(full_df, label="Overall")
+    plot_gender_bias(full_df, label="Overall")
+
+    for year, group in full_df.groupby("Year"):
+        plot_gender_subject_patterns(group, label=str(year))
+        plot_gender_bias(group, label=str(year))
+
     print("Done.")

@@ -71,18 +71,6 @@ def clean_and_rename(df):
     return df.rename(columns=lambda col: LOWER_MAPPING.get(col.lower(), col))
 
 
-def setup_dirs():
-    """Create directory structure for organized plots."""
-    dirs = [
-        'plots/distributions',
-        'plots/gender',
-        'plots/correlations',
-        'plots/progression'
-    ]
-    for d in dirs:
-        os.makedirs(d, exist_ok=True)
-
-
 def ensure_dir(path: str):
     os.makedirs(path, exist_ok=True)
 
@@ -90,22 +78,6 @@ def ensure_dir(path: str):
 def get_score_columns(df: pd.DataFrame):
     subjects = set(SUBJECT_NORMALIZATION.values())
     return [c for c in df.columns if c in subjects]
-
-
-def sanitize_filename(name: str):
-    return name.replace(" ", "_").replace("(", "").replace(")", "")
-
-
-def prepare_years(df, forecast_years):
-    years = np.array(sorted(df["Year"].unique()))
-    future = np.arange(years[-1] + 1, years[-1] + forecast_years + 1)
-    all_years = np.concatenate([years, future])
-    return years, future, all_years.reshape(-1, 1)
-
-
-def fit_and_predict(x, y, x_all):
-    model = LinearRegression().fit(x, y)
-    return model, model.predict(x_all)
 
 
 def save_plot(path, title, xlabel, ylabel, xticks=None, grid_alpha=0.3):

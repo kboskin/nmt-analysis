@@ -1,4 +1,5 @@
 import os
+
 import numpy as np
 import pandas as pd
 from matplotlib import pyplot as plt
@@ -107,21 +108,21 @@ def analyze_subject_difficulty(df):
 # --- visualizations ---------------------------------------------------------
 
 def plot_overall_trend(df):
-    ensure_dir("plots/progression/analysis")
+    ensure_dir("plots/investigation/progression/analysis")
 
     score_cols = get_score_columns(df)
 
     yearly = (
         df.assign(mean_score=df[score_cols].mean(axis=1))
-          .groupby("Year")["mean_score"]
-          .mean()
+        .groupby("Year")["mean_score"]
+        .mean()
     )
 
     plt.figure()
     plt.plot(yearly.index, yearly.values, marker='o')
 
     save_plot(
-        "plots/progression/overall_trend.png",
+        "plots/investigation/progression/overall_trend.png",
         "Average Score Over Time",
         "Year",
         "Score",
@@ -130,7 +131,7 @@ def plot_overall_trend(df):
 
 
 def plot_subject_trends(df):
-    ensure_dir("plots/progression")
+    ensure_dir("plots/investigation/progression")
 
     score_cols = get_score_columns(df)
     yearly = df.groupby("Year")[score_cols].mean()
@@ -140,7 +141,7 @@ def plot_subject_trends(df):
         plt.plot(yearly.index, yearly[subject], marker='o')
 
         save_plot(
-            f"plots/progression/{subject}.png",
+            f"plots/investigation/progression/{subject}.png",
             f"{subject} Trend",
             "Year",
             "Score",
@@ -149,7 +150,7 @@ def plot_subject_trends(df):
 
 
 def plot_urban_rural_trend(df):
-    ensure_dir("plots/progression")
+    ensure_dir("plots/investigation/progression")
 
     score_cols = get_score_columns(df)
 
@@ -169,7 +170,7 @@ def plot_urban_rural_trend(df):
     plt.legend()
 
     save_plot(
-        "plots/progression/urban_vs_rural.png",
+        "plots/investigation/progression/urban_vs_rural.png",
         "Urban vs Rural Scores Over Time",
         "Year",
         "Score",
@@ -183,7 +184,7 @@ def plot_urban_rural_trend(df):
         plt.plot(gap.index, gap.values, marker='o')
 
         save_plot(
-            "plots/progression/urban_rural_gap.png",
+            "plots/investigation/progression/urban_rural_gap.png",
             "Urban - Rural Gap",
             "Year",
             "Score Difference",
@@ -217,7 +218,7 @@ def plot_top_schools(df):
     plt.gca().invert_yaxis()
 
     save_plot(
-        "plots/top_schools.png",
+        "plots/investigation/top_schools.png",
         "Top Schools",
         "Score",
         "School"
@@ -225,7 +226,7 @@ def plot_top_schools(df):
 
 
 def plot_gender_participation(df):
-    ensure_dir("plots/gender")
+    ensure_dir("plots/investigation/gender")
 
     gender_col = "Стать"
     score_cols = get_score_columns(df)
@@ -248,14 +249,15 @@ def plot_gender_participation(df):
     data.plot(kind="bar")
 
     save_plot(
-        "plots/gender/participation.png",
+        "plots/investigation/gender/participation.png",
         "Gender Participation by Subject",
         "Subject",
         "Students"
     )
 
+
 def plot_top_schools_trend(df, top_n=10, min_students=20):
-    ensure_dir("plots/progression")
+    ensure_dir("plots/investigation/progression")
 
     school_col = 'Заклад освіти учасника'
     score_cols = get_score_columns(df)
@@ -299,12 +301,13 @@ def plot_top_schools_trend(df, top_n=10, min_students=20):
     plt.legend(fontsize=6)
 
     save_plot(
-        "plots/progression/top_schools_trend.png",
+        "plots/investigation/progression/top_schools_trend.png",
         "Top Schools Performance Over Time",
         "Year",
         "Score",
         xticks=pivot.index
     )
+
 
 # --- main --------------------------------------------------------------------
 
@@ -335,14 +338,10 @@ if __name__ == "__main__":
     analyze_gender_subject_patterns(full_df)
     analyze_subject_difficulty(full_df)
 
-    # --- yearly breakdown ----------------------------------------------------
-
     run_yearly_analysis(full_df, analyze_best_schools, "Top Schools")
     run_yearly_analysis(full_df, analyze_urban_vs_rural, "Urban vs Rural")
     run_yearly_analysis(full_df, analyze_gender_subject_patterns, "Gender Patterns")
     run_yearly_analysis(full_df, analyze_subject_difficulty, "Subject Difficulty")
-
-    # --- visualizations ------------------------------------------------------
 
     print("\nGenerating plots...")
 
