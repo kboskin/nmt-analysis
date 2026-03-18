@@ -9,25 +9,16 @@ from utils import (
     get_score_columns,
     extract_year,
     ensure_dir,
-    save_plot, SCHOOL_COL, TERRITORY_COL, GENDER_COL, HUM_SUBJECTS, TECH_SUBJECTS, add_mean_score,
+    save_plot, SCHOOL_COL, TERRITORY_COL, GENDER_COL, HUM_SUBJECTS, TECH_SUBJECTS, add_mean_score, add_group_score, get_gender_metrics
 )
 
 
 def analyze_best_schools(df, subjects=None, group_name="Overall", min_students=20, top_n=10):
     print(f"\n--- Top Schools ({group_name}) ---")
 
-    if subjects is None:
-        score_cols = get_score_columns(df)
-    else:
-        score_cols = [c for c in subjects if c in df.columns]
-
-    if not score_cols:
+    df = add_group_score(df, subjects)
+    if df is None:
         return
-
-    df = df.copy()
-    has_score = df[score_cols].notna().any(axis=1)
-    df = df[has_score]
-    df["group_score"] = df[score_cols].mean(axis=1)
 
     stats = (
         df.groupby(SCHOOL_COL)
@@ -69,29 +60,8 @@ def analyze_urban_vs_rural(df):
 def plot_gender_subject_patterns(df, label="overall"):
     ensure_dir("plots/homework/gender")
 
-    score_cols = get_score_columns(df)
-    gender_totals = df[GENDER_COL].value_counts()
-
-    # Exclude mandatory subjects that skew visualization ranges
-    mandatory_subjects = ['Математика', 'Українська мова', 'Історія України']
-    score_cols = [c for c in score_cols if c not in mandatory_subjects]
-
-    rows = []
-
-    for subject in score_cols:
-        participants = df[df[subject].notna()]
-        counts = participants[GENDER_COL].value_counts()
-
-        male_ratio = counts.get('чоловіча', 0) / gender_totals.get('чоловіча', 1)
-        female_ratio = counts.get('жіноча', 0) / gender_totals.get('жіноча', 1)
-
-        rows.append({
-            "subject": subject,
-            "male_%": male_ratio * 100,
-            "female_%": female_ratio * 100,
-        })
-
-    result = pd.DataFrame(rows).sort_values("male_%", ascending=False)
+    result = get_gender_metrics(df).sort_values("male_%", ascending=False)
+    if result.empty: return
 
     x = np.arange(len(result))
 
@@ -169,30 +139,8 @@ def plot_urban_vs_rural(df):
 def plot_gender_bias(df, label="overall"):
     ensure_dir("plots/homework/gender")
 
-    score_cols = get_score_columns(df)
-    gender_totals = df[GENDER_COL].value_counts()
-
-    # Exclude mandatory subjects that skew visualization ranges
-    mandatory_subjects = ['Математика', 'Українська мова', 'Історія України']
-    score_cols = [c for c in score_cols if c not in mandatory_subjects]
-
-    rows = []
-
-    for subject in score_cols:
-        participants = df[df[subject].notna()]
-        counts = participants[GENDER_COL].value_counts()
-
-        male_ratio = counts.get('чоловіча', 0) / gender_totals.get('чоловіча', 1)
-        female_ratio = counts.get('жіноча', 0) / gender_totals.get('жіноча', 1)
-
-        bias = male_ratio / female_ratio if female_ratio else np.nan
-
-        rows.append({
-            "subject": subject,
-            "bias": bias
-        })
-
-    result = pd.DataFrame(rows).sort_values("bias", ascending=False)
+    result = get_gender_metrics(df).sort_values("bias", ascending=False)
+    if result.empty: return
 
     plt.figure(figsize=(10, 6))
     plt.barh(result["subject"], result["bias"])
@@ -208,18 +156,9 @@ def plot_gender_bias(df, label="overall"):
 def plot_top_schools_trend(df, subjects=None, group_name="Overall", top_n=20, min_students=20):
     ensure_dir("plots/homework/progression")
 
-    if subjects is None:
-        score_cols = get_score_columns(df)
-    else:
-        score_cols = [c for c in subjects if c in df.columns]
-
-    if not score_cols:
+    df = add_group_score(df, subjects)
+    if df is None:
         return
-
-    df = df.copy()
-    has_score = df[score_cols].notna().any(axis=1)
-    df = df[has_score]
-    df["group_score"] = df[score_cols].mean(axis=1)
 
     stats = (
         df.groupby(["Year", SCHOOL_COL])

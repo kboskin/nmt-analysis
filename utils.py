@@ -99,9 +99,6 @@ def save_plot(path, title, xlabel, ylabel, xticks=None, grid_alpha=0.3):
     plt.close()
 
 
-def get_score_columns(df):
-    subjects = set(SUBJECT_NORMALIZATION.values())
-    return [c for c in df.columns if c in subjects]
 
 
 def extract_year(path: str) -> int:
@@ -121,3 +118,45 @@ def add_mean_score(df):
     score_cols = get_score_columns(df)
     df["mean_score"] = df[score_cols].mean(axis=1)
     return df
+
+
+def add_group_score(df, subjects=None):
+    if subjects is None:
+        score_cols = get_score_columns(df)
+    else:
+        score_cols = [c for c in subjects if c in df.columns]
+
+    if not score_cols:
+        return None
+
+    df = df.copy()
+    has_score = df[score_cols].notna().any(axis=1)
+    df = df[has_score]
+    df["group_score"] = df[score_cols].mean(axis=1)
+    return df
+
+
+def get_gender_metrics(df):
+    score_cols = get_score_columns(df)
+    gender_totals = df[GENDER_COL].value_counts()
+
+    # Exclude mandatory subjects that skew visualization ranges
+    mandatory_subjects = ['Математика', 'Українська мова', 'Історія України']
+    score_cols = [c for c in score_cols if c not in mandatory_subjects]
+
+    rows = []
+    for subject in score_cols:
+        participants = df[df[subject].notna()]
+        counts = participants[GENDER_COL].value_counts()
+
+        male_ratio = counts.get('чоловіча', 0) / gender_totals.get('чоловіча', 1)
+        female_ratio = counts.get('жіноча', 0) / gender_totals.get('жіноча', 1)
+
+        rows.append({
+            "subject": subject,
+            "male_%": male_ratio * 100,
+            "female_%": female_ratio * 100,
+            "bias": male_ratio / female_ratio if female_ratio else np.nan
+        })
+
+    return pd.DataFrame(rows)
