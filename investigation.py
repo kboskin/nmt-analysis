@@ -146,10 +146,6 @@ def plot_top_schools_trend(df, top_n=10, min_students=20):
     # we are dropping schools for missing years
     pivot = pivot.dropna(axis=1)
 
-    if pivot.empty:
-        print("No schools with consistent yearly data.")
-        return
-
     top_schools = pivot.mean().sort_values(ascending=False).head(top_n).index
     pivot = pivot[top_schools]
 
@@ -169,8 +165,6 @@ def plot_top_schools_trend(df, top_n=10, min_students=20):
     )
 
 
-# --- main --------------------------------------------------------------------
-
 if __name__ == "__main__":
     data = []
 
@@ -185,17 +179,7 @@ if __name__ == "__main__":
         df["Year"] = year
         data.append(df)
 
-    if not data:
-        print("No data found for analysis.")
-        exit()
-
     full_df = pd.concat(data, ignore_index=True)
-
-    print(f"\n===== OVERALL ANALYSIS ({len(full_df)} records) =====")
-
-    analyze_subject_difficulty(full_df)
-
-    run_yearly_analysis(full_df, analyze_subject_difficulty, "Subject Difficulty")
 
     print("\nGenerating plots...")
 

@@ -34,7 +34,7 @@ def analyze_best_schools(df, subjects=None, group_name="Overall", min_students=2
 
     school_means = school_means.loc[valid_schools]
 
-    school_means = school_means.fillna()
+    school_means = school_means.fillna(0)
     ideal_point = school_means.max()
 
     distances = np.sqrt(((school_means - ideal_point) ** 2).sum(axis=1))
@@ -188,11 +188,6 @@ def plot_top_schools_trend(df, subjects=None, group_name="Overall", top_n=20, mi
     # drop schools with missing years (port from investigation)
     pivot = pivot.dropna(axis=1)
 
-    if pivot.empty:
-        print(f"No schools with consistent yearly data for {group_name}.")
-        return
-
-    # select top schools by overall mean
     top_schools = (
         pivot.mean()
         .sort_values(ascending=False)
@@ -233,10 +228,6 @@ if __name__ == "__main__":
         df["Year"] = year
         frames.append(df)
 
-    if not frames:
-        print("No data found.")
-        exit(1)
-
     full_df = pd.concat(frames, ignore_index=True)
 
     analyze_best_schools(full_df, subjects=None, group_name="All Subjects")
@@ -245,7 +236,7 @@ if __name__ == "__main__":
     analyze_urban_vs_rural(full_df)
     analyze_subject_difficulty(full_df)
 
-    print("\nGenerating plots...")
+    print("\nGenerating plots.")
     plot_top_schools_trend(full_df, subjects=HUM_SUBJECTS, group_name="Humanities")
     plot_top_schools_trend(full_df, subjects=TECH_SUBJECTS, group_name="Tech")
     plot_urban_vs_rural(full_df)
