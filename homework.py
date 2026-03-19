@@ -9,43 +9,45 @@ from utils import (
     get_score_columns,
     extract_year,
     ensure_dir,
-    save_plot, SCHOOL_COL, TERRITORY_COL, GENDER_COL, HUM_SUBJECTS, TECH_SUBJECTS, add_mean_score, add_group_score, get_gender_metrics
+    save_plot, SCHOOL_COL, TERRITORY_COL, GENDER_COL, HUM_SUBJECTS, TECH_SUBJECTS, add_mean_score, add_group_score,
+    get_gender_metrics
 )
 
 
-def analyze_best_schools(df, subjects=None, group_name="Overall", min_students=20, top_n=10):
-    print(f"\n--- Top Schools Multicriteria Ideal Point ({group_name}) ---")
+def analyze_best_schools(df, subjects=None, group_name="Overall", min_students=10, top_n=10):
+    print(f"\n--- Top Schools by Average Score ({group_name}) ---")
 
-    if subjects is None:
-        score_cols = get_score_columns(df)
-    else:
-        score_cols = [c for c in subjects if c in df.columns]
-
-    if not score_cols:
+    df_grouped = add_group_score(df, subjects)
+    if df_grouped is None:
         return
 
-    df = df.copy()
+    # There are a lot of schools that just don't have enough students for all the years.
+    # We are enforcing school to have at least 10 graduates in any year, otherwise - considered
+    # irrelevant
+    yearly_stats = df_grouped.groupby(["Year", SCHOOL_COL]).agg(
+        students=("group_score", "count")
+    ).reset_index()
 
-    # Aggregate by school to find average scores per dimensional subject dot
-    school_means = df.groupby(SCHOOL_COL)[score_cols].mean()
-    
-    school_counts = df.groupby(SCHOOL_COL)[score_cols].count().sum(axis=1)
-    valid_schools = school_counts[school_counts >= min_students].index
+    students_pivot = yearly_stats.pivot(index="Year", columns=SCHOOL_COL, values="students")
 
-    school_means = school_means.loc[valid_schools]
+    total_years = df_grouped["Year"].nunique()
+    valid_mask = (students_pivot >= min_students).sum() == total_years
+    valid_school_names = valid_mask[valid_mask].index
 
-    school_means = school_means.fillna(0)
-    ideal_point = school_means.max()
+    overall_stats = (
+        df_grouped[df_grouped[SCHOOL_COL].isin(valid_school_names)]
+        .groupby(SCHOOL_COL)
+        .agg(
+            avg_score=("group_score", "mean"),
+            students=("group_score", "count")
+        )
+    )
 
-    distances = np.sqrt(((school_means - ideal_point) ** 2).sum(axis=1))
-    top_schools = distances.sort_values(ascending=True).head(top_n)
+    top_schools = overall_stats.sort_values(by="avg_score", ascending=False).head(top_n)
 
-    result = pd.DataFrame({
-        "Distance to Ideal": top_schools,
-        "Total Exams": school_counts.loc[top_schools.index]
-    })
-    
-    print(f"Absolute winner is {result}")
+    print(f"Absolute winner is\n{top_schools[['avg_score', 'students']]}")
+
+    return top_schools.index
 
 
 def analyze_urban_vs_rural(df):
@@ -164,40 +166,26 @@ def plot_gender_bias(df, label="overall"):
     )
 
 
-def plot_top_schools_trend(df, subjects=None, group_name="Overall", top_n=20, min_students=20):
+def plot_top_schools_trend(df, top_school_names, subjects=None, group_name="Overall"):
     ensure_dir("plots/homework/progression")
 
     df = add_group_score(df, subjects)
-    if df is None:
-        return
+
+    # Now get yearly stats only for these top schools
+    df_top = df[df[SCHOOL_COL].isin(top_school_names)]
 
     stats = (
-        df.groupby(["Year", SCHOOL_COL])
-        .agg(
-            avg_score=("group_score", "mean"),
-            students=("group_score", "count"),
-        )
+        df_top.groupby(["Year", SCHOOL_COL])
+        .agg(avg_score=("group_score", "mean"))
         .reset_index()
     )
 
-    stats = stats[stats["students"] >= min_students]
-    if stats.empty: return
-
     pivot = stats.pivot(index="Year", columns=SCHOOL_COL, values="avg_score")
 
-    # drop schools with missing years (port from investigation)
-    pivot = pivot.dropna(axis=1)
+    # Reorder columns to match the overall ranking order
+    pivot = pivot[top_school_names]
 
-    top_schools = (
-        pivot.mean()
-        .sort_values(ascending=False)
-        .head(top_n)
-        .index
-    )
-
-    pivot = pivot[top_schools]
-
-    plt.figure(figsize=(18, 10))
+    plt.figure(figsize=(20, 10))
 
     pivot.plot(ax=plt.gca(), marker='o', colormap='tab20')
 
@@ -230,15 +218,16 @@ if __name__ == "__main__":
 
     full_df = pd.concat(frames, ignore_index=True)
 
-    analyze_best_schools(full_df, subjects=None, group_name="All Subjects")
-    analyze_best_schools(full_df, subjects=HUM_SUBJECTS, group_name="Humanities")
-    analyze_best_schools(full_df, subjects=TECH_SUBJECTS, group_name="Tech")
+    top_overall = analyze_best_schools(full_df, subjects=None, group_name="All Subjects")
+    top_hum = analyze_best_schools(full_df, subjects=HUM_SUBJECTS, group_name="Humanities")
+    top_tech = analyze_best_schools(full_df, subjects=TECH_SUBJECTS, group_name="Tech")
     analyze_urban_vs_rural(full_df)
     analyze_subject_difficulty(full_df)
 
     print("\nGenerating plots.")
-    plot_top_schools_trend(full_df, subjects=HUM_SUBJECTS, group_name="Humanities")
-    plot_top_schools_trend(full_df, subjects=TECH_SUBJECTS, group_name="Tech")
+    plot_top_schools_trend(full_df, top_overall, subjects=None, group_name="All Subjects")
+    plot_top_schools_trend(full_df, top_hum, subjects=HUM_SUBJECTS, group_name="Humanities")
+    plot_top_schools_trend(full_df, top_tech, subjects=TECH_SUBJECTS, group_name="Tech")
     plot_urban_vs_rural(full_df)
 
     plot_gender_subject_patterns(full_df, label="Overall")

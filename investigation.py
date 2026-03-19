@@ -121,7 +121,7 @@ def plot_subject_distributions(df, label="overall"):
         )
 
 
-def plot_top_schools_trend(df, top_n=10, min_students=20):
+def plot_top_schools_trend(df, top_n=10, min_students=10):
     ensure_dir("plots/investigation/progression")
 
     school_col = 'Заклад освіти учасника'
@@ -130,34 +130,52 @@ def plot_top_schools_trend(df, top_n=10, min_students=20):
     df = df.copy()
     df["mean_score"] = df[score_cols].mean(axis=1)
 
-    stats = (
-        df.groupby(["Year", school_col])
+    # Calculate per-year students
+    yearly_stats = df.groupby(["Year", school_col]).agg(
+        students=("mean_score", "count")
+    ).reset_index()
+
+    students_pivot = yearly_stats.pivot(index="Year", columns=school_col, values="students")
+    
+    # Valid schools must have >= min_students FOR ALL THE YEARS
+    total_years = df["Year"].nunique()
+    valid_mask = (students_pivot >= min_students).sum() == total_years
+    valid_school_names = valid_mask[valid_mask].index
+
+    overall_stats = (
+        df[df[school_col].isin(valid_school_names)]
+        .groupby(school_col)
         .agg(
             avg_score=("mean_score", "mean"),
-            students=("mean_score", "size")
         )
+    )
+
+    top_school_names = overall_stats.sort_values("avg_score", ascending=False).head(top_n).index
+
+    df_top = df[df[school_col].isin(top_school_names)]
+    stats = (
+        df_top.groupby(["Year", school_col])
+        .agg(avg_score=("mean_score", "mean"))
         .reset_index()
     )
 
-    # filter by minimum students per year
-    stats = stats[stats["students"] >= min_students]
     pivot = stats.pivot(index="Year", columns=school_col, values="avg_score")
+    pivot = pivot[top_school_names]
 
-    # we are dropping schools for missing years
-    pivot = pivot.dropna(axis=1)
-
-    top_schools = pivot.mean().sort_values(ascending=False).head(top_n).index
-    pivot = pivot[top_schools]
-
-    plt.figure()
+    plt.figure(figsize=(20, 10))
 
     for school in pivot.columns:
         plt.plot(pivot.index, pivot[school], marker='o', label=school)
 
-    plt.legend(fontsize=6)
+    plt.legend(
+        loc='upper center',
+        bbox_to_anchor=(0.5, -0.2),
+        ncol=2,
+        fontsize=8
+    )
 
     save_plot(
-        "plots/investigation/progression/top_schools_trend.png",
+        f"plots/investigation/progression/top_schools_trend.png",
         "Top Schools Performance Over Time",
         "Year",
         "Score",
