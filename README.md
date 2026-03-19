@@ -1,5 +1,8 @@
 # Educational NMT Data Analysis 2022-2025
 
+## Setup
+Dataset has been pushed through [git-lfs](https://git-lfs.com/). If it doesn't work, dataset can be downloaded year-by-year from [here](https://zno.testportal.com.ua/opendata), put into **"data"** directory and named `f"Odata{year}file.csv"`, where year stands for year (2022, 2023...)
+
 ## Problem 1: Determine the best school and explain criteria
 
 To determine the best school they were split into few categories: humanities, tech and overall. Where tech = [math, physics, chemistry, biology], humanities = [languages, literature, geography]. Score that was used to determine - average score per categories, with enforced constraints (each year >10 students)
