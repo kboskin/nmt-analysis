@@ -11,8 +11,9 @@ from utils import (
     get_score_columns,
     extract_year,
     ensure_dir,
-    save_plot, run_yearly_analysis,
+    save_plot, run_yearly_analysis, get_gender_metrics
 )
+import matplotlib.patches as mpatches
 
 
 def analyze_subject_difficulty(df):
@@ -66,39 +67,6 @@ def plot_subject_trends(df):
         )
 
 
-def plot_top_schools(df):
-    ensure_dir("plots")
-
-    school_col = 'Заклад освіти учасника'
-    score_cols = get_score_columns(df)
-
-    df = df.copy()
-    df["mean_score"] = df[score_cols].mean(axis=1)
-
-    stats = (
-        df.groupby(school_col)
-        .agg(avg_score=("mean_score", "mean"),
-             students=("mean_score", "size"))
-    )
-
-    top = (
-        stats[stats["students"] >= 20]
-        .sort_values("avg_score", ascending=False)
-        .head(10)
-    )
-
-    plt.figure()
-    plt.barh(top.index, top["avg_score"])
-    plt.gca().invert_yaxis()
-
-    save_plot(
-        "plots/investigation/top_schools.png",
-        "Top Schools",
-        "Score",
-        "School"
-    )
-
-
 def plot_subject_distributions(df, label="overall"):
     ensure_dir(f"plots/investigation/distributions/{label}")
 
@@ -119,6 +87,54 @@ def plot_subject_distributions(df, label="overall"):
             "Score",
             "Number of Students"
         )
+
+
+def plot_gender_candle_chart(df, label="overall"):
+    ensure_dir("plots/investigation/gender")
+    
+    score_cols = get_score_columns(df)
+    gender_col = 'Стать'
+    
+    plt.figure(figsize=(18, 8))
+    
+    positions = []
+    labels = []
+    data = []
+    
+    for i, subject in enumerate(score_cols):
+        subject_data = df.dropna(subset=[subject, gender_col])
+
+        # filter >100, to avoid dropouts
+        subject_data = subject_data[subject_data[subject] >= 100]
+        
+        male_scores = subject_data[subject_data[gender_col] == 'чоловіча'][subject].values
+        female_scores = subject_data[subject_data[gender_col] == 'жіноча'][subject].values
+        
+        if len(male_scores) > 10 and len(female_scores) > 10:
+            data.extend([male_scores, female_scores])
+            # add some margins here and there
+            positions.extend([i*3 - 0.5, i*3 + 0.5])
+            labels.append(subject)
+
+    bplot = plt.boxplot(data, positions=positions, patch_artist=True, widths=0.8)
+    
+    colors = ['lightblue', 'lightpink'] * (len(data) // 2)
+    for patch, color in zip(bplot['boxes'], colors):
+        patch.set_facecolor(color)
+
+    # add some margins here and there for ticks
+    plt.xticks([i*3 for i in range(len(labels))], labels, rotation=45, ha='right')
+    plt.title(f"Score Distribution by Gender (Candle/Boxplot) ({label})")
+    plt.ylabel("Score")
+    plt.grid(alpha=0.3)
+    plt.tight_layout()
+    
+    male_patch = mpatches.Patch(color='lightblue', label='Male')
+    female_patch = mpatches.Patch(color='lightpink', label='Female')
+    plt.legend(handles=[male_patch, female_patch])
+    
+    plt.savefig(f"plots/investigation/gender/gender_candle_{label.lower()}.png")
+    plt.close()
 
 
 def plot_top_schools_trend(df, top_n=10, min_students=10):
@@ -187,8 +203,6 @@ if __name__ == "__main__":
     data = []
 
     for path in AGGREGATION:
-        if not os.path.exists(path):
-            continue
 
         year = extract_year(path)
         print(f"Loading {path} ({year})...")
@@ -205,8 +219,11 @@ if __name__ == "__main__":
     for year, group in full_df.groupby("Year"):
         plot_subject_distributions(group, label=str(year))
 
+    plot_gender_candle_chart(full_df, label="overall")
+    for year, group in full_df.groupby("Year"):
+        plot_gender_candle_chart(group, label=str(year))
+
     plot_overall_trend(full_df)
     plot_subject_trends(full_df)
-    plot_top_schools_trend(full_df)
 
     print("Plots saved to /plots")

@@ -185,7 +185,7 @@ def plot_top_schools_trend(df, top_school_names, subjects=None, group_name="Over
     # Reorder columns to match the overall ranking order
     pivot = pivot[top_school_names]
 
-    plt.figure(figsize=(20, 10))
+    plt.figure(figsize=(18, 8))
 
     pivot.plot(ax=plt.gca(), marker='o', colormap='tab20')
 

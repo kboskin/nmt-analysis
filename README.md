@@ -1,4 +1,4 @@
-# ML Homework: Educational ZNO/NMT Data Analysis
+# Educational NMT Data Analysis 2022-2025
 
 ## Problem 1: Determine the best school and explain criteria
 
@@ -86,7 +86,7 @@ Identify if there is a divergence between city and rural area over the time
 
 The biggest gap spotted was in 2023, which might be explained by intense migration from the combar zone into the city
 
-## 3. Patterns in Examination Subject Choices for Men and Women
+## Problem 3. Patterns In Examination Subject Choices for Men and Women
 
 ### Problem Statement
 Investigate whether there are distinct gender-based patterns in choosing elective examination subjects.
@@ -114,3 +114,39 @@ Our analysis highlights major discrepancies:
 ![gender_subject_distribution_2024.png](/plots%2Fhomework%2Fgender%2Fgender_subject_distribution_2024.png)
 ![gender_subject_distribution_2025.png](/plots%2Fhomework%2Fgender%2Fgender_subject_distribution_2025.png)
 ![gender_subject_distribution_overall.png](/plots%2Fhomework%2Fgender%2Fgender_subject_distribution_overall.png)
+
+## Gender Score Distribution (Candle / Boxplot)
+
+### Problem statement
+Analysis if one gender performs better compared to the other oen
+
+### The results
+Based on the data, we can see, that girls perform better in 2/3 mandatory subjects (history and Ukrainian language). What is interesting, girls outperform in physics, though, we know gender bias is skewed for males. We can make conclusions that girls are the gender that raises overall score (due to heavy impact for base subjects)
+
+#### Chart per subj per gender overall for all years
+![gender_candle_overall.png](/plots%2Finvestigation%2Fgender%2Fgender_candle_overall.png)
+
+#### Chart per subj per gender overall for 2025
+![gender_candle_2025.png](/plots%2Finvestigation%2Fgender%2Fgender_candle_2025.png)
+
+## Math results analysis
+
+### Problem statement
+Analyze the results for mathematics scores and it's distribution (believed to be the subject heavily correlated with other technical ones) per year
+
+### The results
+We are seeing that at the 2022 the results were moderate, more looking like a normally distributed around the 150-160. 2023-2025 we are seeing that distribution is significantly skewed to the left, with growing bars closer to 2025. We can conclude that overall results have significantly degraded and it's expected to become a new "reality" in few years to score 140 and consider this a great results
+
+### Score distribution charts 2022-2025
+
+![Математика.png](/plots%2Finvestigation%2Fdistributions%2F2022%2F%D0%9C%D0%B0%D1%82%D0%B5%D0%BC%D0%B0%D1%82%D0%B8%D0%BA%D0%B0.png)
+![Математика.png](/plots%2Finvestigation%2Fdistributions%2F2023%2F%D0%9C%D0%B0%D1%82%D0%B5%D0%BC%D0%B0%D1%82%D0%B8%D0%BA%D0%B0.png)
+![Математика.png](/plots%2Finvestigation%2Fdistributions%2F2024%2F%D0%9C%D0%B0%D1%82%D0%B5%D0%BC%D0%B0%D1%82%D0%B8%D0%BA%D0%B0.png)
+![Математика.png](/plots%2Finvestigation%2Fdistributions%2F2025%2F%D0%9C%D0%B0%D1%82%D0%B5%D0%BC%D0%B0%D1%82%D0%B8%D0%BA%D0%B0.png)
+
+## General conclusion
+
+- Top-tier education is highly concentrated in a small number of elite institutions. Lviv, Kyiv cities
+- Urban advantage is persistent and structural 
+- Gender differences are behavioral (choice) and performance-based 
+- Mathematics (and other tech subjects) are the most concerning weak points and expected to degrade further
