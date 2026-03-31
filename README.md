@@ -1,7 +1,7 @@
-# Educational NMT Data Analysis 2022-2025
+# Educational NMT Data Analysis 2022-2025 in Ukraine
 
 ## Setup
-Dataset has been pushed through [git-lfs](https://git-lfs.com/). If it doesn't work, dataset can be downloaded year-by-year from [here](https://zno.testportal.com.ua/opendata), put into **"data"** directory and named `f"Odata{year}file.csv"`, where year stands for year (2022, 2023...)
+Dataset has been pushed through [git-lfs](https://git-lfs.com/). This is official dataset for the real exam data for schoold graduates. If it doesn't work, dataset can be downloaded year-by-year from [here](https://zno.testportal.com.ua/opendata), put into **"data"** directory and named `f"Odata{year}file.csv"`, where year stands for year (2022, 2023...)
 
 ## Problem 1: Determine the best school and explain criteria
 
